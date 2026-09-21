@@ -1,5 +1,6 @@
 import { signOut } from '../lib/auth.js';
 import { renderSchedule } from './schedule.js';
+import { renderExercises } from './exercises.js';
 
 const ROLE_LABELS = {
   admin: 'Administrador',
@@ -10,6 +11,7 @@ const ROLE_LABELS = {
 const TABS = [
   { id: 'home', label: 'Inicio' },
   { id: 'schedule', label: 'Horarios' },
+  { id: 'exercises', label: 'Ejercicios' },
 ];
 
 export function renderDashboard(container, gym, profile, { onSignOut }) {
@@ -46,6 +48,8 @@ export function renderDashboard(container, gym, profile, { onSignOut }) {
     tabButtons.forEach((btn) => btn.classList.toggle('is-active', btn.dataset.tab === tabId));
     if (tabId === 'schedule') {
       renderSchedule(content, gym, profile);
+    } else if (tabId === 'exercises') {
+      renderExercises(content, gym, profile);
     } else {
       renderHome(content, profile);
     }
