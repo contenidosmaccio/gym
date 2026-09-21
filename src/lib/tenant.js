@@ -1,5 +1,7 @@
 import { supabase } from './supabase.js';
-import { PLATFORM_DOMAIN, DEV_GYM_SLUG } from '../../config.js';
+
+const PLATFORM_DOMAIN = import.meta.env.VITE_PLATFORM_DOMAIN;
+const DEV_GYM_SLUG = import.meta.env.VITE_DEV_GYM_SLUG || 'forge';
 
 // Resuelve qué gimnasio corresponde según el dominio/subdominio actual.
 // En local (sin dominio real), usa ?gym=slug o el último elegido, con

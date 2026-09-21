@@ -15,9 +15,9 @@ Primer gimnasio: **Forge Fitness Club**.
 
 ## 1. Proyecto en Supabase
 
-El proyecto ya está creado. `config.js` (no se sube a git) tiene la URL y
-la publishable key. Para recrearlo en otra máquina, copiá
-`config.example.js` a `config.js` y completá los valores desde
+El proyecto ya está creado. Las credenciales se pasan por variables de
+entorno de Vite (`.env.local`, no se sube a git). Para recrearlo en otra
+máquina, copiá `.env.example` a `.env.local` y completá los valores desde
 **Project Settings > API** en el dashboard de Supabase.
 
 El esquema de base de datos vive versionado en
@@ -37,7 +37,27 @@ npm run dev
 
 En local, como no hay un dominio propio, la app elige el gimnasio a
 mostrar por query param (`?gym=forge`) o, si no se especifica, usa
-`DEV_GYM_SLUG` de `config.js`.
+`VITE_DEV_GYM_SLUG` de `.env.local`.
+
+## 3. Publicarlo (Cloudflare Pages)
+
+1. En [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages**
+   → **Create** → **Pages** → **Connect to Git**, elegí el repo
+   `contenidosmaccio/gym`.
+2. Build settings: framework preset **Vite**, build command `npm run build`,
+   output directory `dist`.
+3. En **Settings > Environment variables** (para el entorno de Production,
+   y también Preview si lo usás) agregá las mismas claves de
+   `.env.example` con los valores reales:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`
+   - `VITE_PLATFORM_DOMAIN`
+4. Deploy. Cloudflare te da una URL `*.pages.dev` que ya sirve para probar
+   la plataforma online.
+5. Para el dominio propio de cada gimnasio (ej. `forgefitness.com.ar`):
+   **Custom domains** en ese mismo proyecto de Pages → agregar dominio →
+   seguir las instrucciones de DNS. Repetir por cada gimnasio nuevo; todos
+   apuntan al mismo deploy y `tenant.js` resuelve cuál mostrar.
 
 ## Cómo funciona el multi-tenant
 

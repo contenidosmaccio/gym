@@ -12,9 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Config con credenciales reales de Supabase
-config.js
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
