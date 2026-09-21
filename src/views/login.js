@@ -4,6 +4,7 @@ export function renderLogin(container, gym, { onSuccess, onGoRegister }) {
   container.innerHTML = `
     <div class="auth-screen">
       <div class="auth-card">
+        ${logoMarkup(gym)}
         <h1 class="gym-name">${escapeHtml(gym.name)}</h1>
         <form id="login-form" class="form">
           <label>
@@ -57,4 +58,9 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str ?? '';
   return div.innerHTML;
+}
+
+function logoMarkup(gym) {
+  if (!gym.logo_url) return '';
+  return `<img class="auth-logo" src="${escapeHtml(gym.logo_url)}" alt="${escapeHtml(gym.name)}" />`;
 }

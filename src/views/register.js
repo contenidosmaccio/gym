@@ -4,6 +4,7 @@ export function renderRegister(container, gym, { onSuccess, onGoLogin }) {
   container.innerHTML = `
     <div class="auth-screen">
       <div class="auth-card">
+        ${logoMarkup(gym)}
         <h1 class="gym-name">${escapeHtml(gym.name)}</h1>
         <p class="auth-subtitle">Creá tu cuenta de socio</p>
         <form id="register-form" class="form">
@@ -79,4 +80,9 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str ?? '';
   return div.innerHTML;
+}
+
+function logoMarkup(gym) {
+  if (!gym.logo_url) return '';
+  return `<img class="auth-logo" src="${escapeHtml(gym.logo_url)}" alt="${escapeHtml(gym.name)}" />`;
 }
