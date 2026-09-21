@@ -541,3 +541,137 @@ h3 {
   border: none;
   color: var(--color-muted);
 }
+
+/* ---- Planes y rutinas ---- */
+
+.training-view h2 {
+  margin: 0 0 16px;
+}
+
+.member-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  margin-bottom: 20px;
+  max-width: 320px;
+}
+
+.member-picker select {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--color-contrast);
+  font-size: 1rem;
+}
+
+.plain-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plan-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.plan-row.is-active .plan-select {
+  color: var(--color-contrast);
+}
+
+.plan-row .plan-select {
+  flex: 1;
+  text-align: left;
+}
+
+.training-routines {
+  margin-top: 20px;
+}
+
+.routine-card {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.routine-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.routine-exercise-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+}
+
+.routine-exercise-table th,
+.routine-exercise-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.routine-exercise-table thead th {
+  color: var(--color-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+}
+
+.form-row-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.form-row-wrap select,
+.form-row-wrap input {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--color-contrast);
+  font-size: 0.85rem;
+  flex: 1;
+  min-width: 100px;
+}
+
+.sub-tabs {
+  padding: 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.exercise-log-row {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.exercise-log-row + .exercise-log-row {
+  margin-top: 12px;
+}
+
+.history-row {
+  display: flex;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}

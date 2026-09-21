@@ -1,6 +1,8 @@
 import { signOut } from '../lib/auth.js';
 import { renderSchedule } from './schedule.js';
 import { renderExercises } from './exercises.js';
+import { renderTrainingStaff } from './training-staff.js';
+import { renderTrainingMember } from './training-member.js';
 
 const ROLE_LABELS = {
   admin: 'Administrador',
@@ -12,6 +14,7 @@ const TABS = [
   { id: 'home', label: 'Inicio' },
   { id: 'schedule', label: 'Horarios' },
   { id: 'exercises', label: 'Ejercicios' },
+  { id: 'training', label: 'Rutinas' },
 ];
 
 export function renderDashboard(container, gym, profile, { onSignOut }) {
@@ -50,6 +53,12 @@ export function renderDashboard(container, gym, profile, { onSignOut }) {
       renderSchedule(content, gym, profile);
     } else if (tabId === 'exercises') {
       renderExercises(content, gym, profile);
+    } else if (tabId === 'training') {
+      if (profile.role === 'socio') {
+        renderTrainingMember(content, gym, profile);
+      } else {
+        renderTrainingStaff(content, gym, profile);
+      }
     } else {
       renderHome(content, profile);
     }
