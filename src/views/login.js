@@ -1,4 +1,5 @@
 import { signIn } from '../lib/auth.js';
+import { passwordFieldMarkup, wirePasswordToggles } from '../lib/password-field.js';
 
 export function renderLogin(container, gym, { onSuccess, onGoRegister, initialError }) {
   container.innerHTML = `
@@ -11,10 +12,7 @@ export function renderLogin(container, gym, { onSuccess, onGoRegister, initialEr
             Email
             <input type="email" name="email" required autocomplete="email" />
           </label>
-          <label>
-            Contraseña
-            <input type="password" name="password" required autocomplete="current-password" />
-          </label>
+          ${passwordFieldMarkup({ label: 'Contraseña', name: 'password', autocomplete: 'current-password' })}
           <p class="form-error" id="login-error" ${initialError ? '' : 'hidden'}>${escapeHtml(translateAuthError(initialError ?? ''))}</p>
           <button type="submit" class="btn btn-primary">Ingresar</button>
         </form>
@@ -25,6 +23,8 @@ export function renderLogin(container, gym, { onSuccess, onGoRegister, initialEr
       </div>
     </div>
   `;
+
+  wirePasswordToggles(container);
 
   const form = container.querySelector('#login-form');
   const errorEl = container.querySelector('#login-error');

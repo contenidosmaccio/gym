@@ -1,4 +1,5 @@
 import { signUp } from '../lib/auth.js';
+import { passwordFieldMarkup, wirePasswordToggles } from '../lib/password-field.js';
 
 export function renderRegister(container, gym, { onSuccess, onGoLogin }) {
   container.innerHTML = `
@@ -20,10 +21,8 @@ export function renderRegister(container, gym, { onSuccess, onGoLogin }) {
             Email
             <input type="email" name="email" required autocomplete="email" />
           </label>
-          <label>
-            Contraseña
-            <input type="password" name="password" required minlength="6" autocomplete="new-password" />
-          </label>
+          ${passwordFieldMarkup({ label: 'Contraseña', name: 'password', autocomplete: 'new-password', minlength: 6 })}
+          ${passwordFieldMarkup({ label: 'Confirmar contraseña', name: 'passwordConfirm', autocomplete: 'new-password', minlength: 6 })}
           <p class="form-error" id="register-error" hidden></p>
           <p class="form-success" id="register-success" hidden></p>
           <button type="submit" class="btn btn-primary">Registrarme</button>
@@ -36,6 +35,8 @@ export function renderRegister(container, gym, { onSuccess, onGoLogin }) {
     </div>
   `;
 
+  wirePasswordToggles(container);
+
   const form = container.querySelector('#register-form');
   const errorEl = container.querySelector('#register-error');
   const successEl = container.querySelector('#register-success');
@@ -45,6 +46,13 @@ export function renderRegister(container, gym, { onSuccess, onGoLogin }) {
     errorEl.hidden = true;
     successEl.hidden = true;
     const formData = new FormData(form);
+
+    if (formData.get('password') !== formData.get('passwordConfirm')) {
+      errorEl.textContent = 'Las contraseñas no coinciden.';
+      errorEl.hidden = false;
+      return;
+    }
+
     const submitBtn = form.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     try {
