@@ -4,17 +4,21 @@ const PLATFORM_DOMAIN = import.meta.env.VITE_PLATFORM_DOMAIN;
 const DEV_GYM_SLUG = import.meta.env.VITE_DEV_GYM_SLUG || 'forge';
 
 // Resuelve qué gimnasio corresponde según el dominio/subdominio actual.
-// En local (sin dominio real), usa ?gym=slug o el último elegido, con
-// DEV_GYM_SLUG como default.
+// ?gym=slug fuerza un gimnasio puntual (útil en local, y también en
+// dominios "técnicos" sin branding propio todavía, como *.workers.dev o
+// *.pages.dev, mientras no haya dominios reales conectados).
 function resolveLookup() {
   const hostname = window.location.hostname;
   const params = new URLSearchParams(window.location.search);
   const forcedSlug = params.get('gym');
 
-  if (forcedSlug) localStorage.setItem('dev_gym_slug', forcedSlug);
+  if (forcedSlug) {
+    localStorage.setItem('dev_gym_slug', forcedSlug);
+    return { column: 'slug', value: forcedSlug };
+  }
 
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return { column: 'slug', value: forcedSlug || localStorage.getItem('dev_gym_slug') || DEV_GYM_SLUG };
+    return { column: 'slug', value: localStorage.getItem('dev_gym_slug') || DEV_GYM_SLUG };
   }
 
   if (PLATFORM_DOMAIN && hostname.endsWith(`.${PLATFORM_DOMAIN}`)) {
