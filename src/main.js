@@ -16,6 +16,8 @@ async function boot() {
     return;
   }
 
+  const authError = consumeAuthHashError();
+
   const session = await getSession();
   if (session) {
     const profile = await getCurrentProfile();
@@ -25,11 +27,24 @@ async function boot() {
     }
   }
 
-  showLogin(gym);
+  showLogin(gym, authError);
 }
 
-function showLogin(gym) {
+// Supabase redirige acá con #error=... cuando un link de confirmación o
+// de recuperación de contraseña ya fue usado o expiró. Lo leemos una vez
+// y limpiamos el hash para no reprocesarlo en un refresh.
+function consumeAuthHashError() {
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const description = hash.get('error_description');
+  if (!description) return null;
+
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+  return description.replace(/\+/g, ' ');
+}
+
+function showLogin(gym, initialError) {
   renderLogin(app, gym, {
+    initialError,
     onSuccess: async () => {
       const profile = await getCurrentProfile();
       showDashboard(gym, profile);

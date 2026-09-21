@@ -1,6 +1,6 @@
 import { signIn } from '../lib/auth.js';
 
-export function renderLogin(container, gym, { onSuccess, onGoRegister }) {
+export function renderLogin(container, gym, { onSuccess, onGoRegister, initialError }) {
   container.innerHTML = `
     <div class="auth-screen">
       <div class="auth-card">
@@ -15,7 +15,7 @@ export function renderLogin(container, gym, { onSuccess, onGoRegister }) {
             Contraseña
             <input type="password" name="password" required autocomplete="current-password" />
           </label>
-          <p class="form-error" id="login-error" hidden></p>
+          <p class="form-error" id="login-error" ${initialError ? '' : 'hidden'}>${escapeHtml(translateAuthError(initialError ?? ''))}</p>
           <button type="submit" class="btn btn-primary">Ingresar</button>
         </form>
         <p class="auth-alt">
@@ -51,6 +51,9 @@ export function renderLogin(container, gym, { onSuccess, onGoRegister }) {
 
 function translateAuthError(message) {
   if (message.includes('Invalid login credentials')) return 'Email o contraseña incorrectos.';
+  if (message.includes('Email link is invalid or has expired')) {
+    return 'Ese link de confirmación ya fue usado o expiró. Si todavía no pudiste ingresar, registrate de nuevo con el mismo email para recibir uno nuevo.';
+  }
   return message;
 }
 

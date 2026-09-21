@@ -17,7 +17,13 @@ function resolveLookup() {
     return { column: 'slug', value: forcedSlug };
   }
 
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+  const isTechnicalPreviewDomain =
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.endsWith('.workers.dev') ||
+    hostname.endsWith('.pages.dev');
+
+  if (isTechnicalPreviewDomain) {
     return { column: 'slug', value: localStorage.getItem('dev_gym_slug') || DEV_GYM_SLUG };
   }
 
