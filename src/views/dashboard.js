@@ -1,10 +1,16 @@
 import { signOut } from '../lib/auth.js';
+import { renderSchedule } from './schedule.js';
 
 const ROLE_LABELS = {
   admin: 'Administrador',
   profe: 'Profesor',
   socio: 'Socio',
 };
+
+const TABS = [
+  { id: 'home', label: 'Inicio' },
+  { id: 'schedule', label: 'Horarios' },
+];
 
 export function renderDashboard(container, gym, profile, { onSignOut }) {
   if (profile.status === 'pending') {
@@ -21,17 +27,10 @@ export function renderDashboard(container, gym, profile, { onSignOut }) {
         </span>
         <button type="button" id="logout" class="btn-link">Cerrar sesión</button>
       </header>
-      <main class="app-main">
-        <h2>Hola, ${escapeHtml(profile.first_name || profile.email)} 👋</h2>
-        <p class="role-badge">${ROLE_LABELS[profile.role] ?? profile.role}</p>
-        <div class="card">
-          <p>
-            Esta es la base de la plataforma: multi-gimnasio, roles y branding
-            ya están funcionando. El resto de los módulos (rutinas, horarios,
-            cuotas, etc.) se van a ir agregando por etapas.
-          </p>
-        </div>
-      </main>
+      <nav class="app-tabs">
+        ${TABS.map((tab) => `<button type="button" class="app-tab" data-tab="${tab.id}">${tab.label}</button>`).join('')}
+      </nav>
+      <main class="app-main" id="app-tab-content"></main>
     </div>
   `;
 
@@ -39,6 +38,35 @@ export function renderDashboard(container, gym, profile, { onSignOut }) {
     await signOut();
     onSignOut();
   });
+
+  const tabButtons = [...container.querySelectorAll('.app-tab')];
+  const content = container.querySelector('#app-tab-content');
+
+  function selectTab(tabId) {
+    tabButtons.forEach((btn) => btn.classList.toggle('is-active', btn.dataset.tab === tabId));
+    if (tabId === 'schedule') {
+      renderSchedule(content, gym, profile);
+    } else {
+      renderHome(content, profile);
+    }
+  }
+
+  tabButtons.forEach((btn) => btn.addEventListener('click', () => selectTab(btn.dataset.tab)));
+  selectTab('home');
+}
+
+function renderHome(container, profile) {
+  container.innerHTML = `
+    <h2>Hola, ${escapeHtml(profile.first_name || profile.email)} 👋</h2>
+    <p class="role-badge">${ROLE_LABELS[profile.role] ?? profile.role}</p>
+    <div class="card">
+      <p>
+        Esta es la base de la plataforma: multi-gimnasio, roles y branding
+        ya están funcionando. El resto de los módulos (rutinas, cuotas, etc.)
+        se van a ir agregando por etapas.
+      </p>
+    </div>
+  `;
 }
 
 function renderPending(container, gym, onSignOut) {
