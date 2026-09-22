@@ -1,12 +1,12 @@
 import { supabase } from './supabase.js';
 
-function localToday() {
+export function localToday() {
   const d = new Date();
   const offset = d.getTimezoneOffset();
   return new Date(d.getTime() - offset * 60000).toISOString().slice(0, 10);
 }
 
-function addDaysIso(iso, days) {
+export function addDaysIso(iso, days) {
   const d = new Date(`${iso}T00:00:00`);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
@@ -16,9 +16,8 @@ export async function fetchAdminMetrics(gymId) {
   const today = localToday();
   const weekAhead = addDaysIso(today, 7);
   const monthAgo = addDaysIso(today, -30);
-  const monthStart = `${today.slice(0, 7)}-01`;
 
-  const [membersRes, profesRes, membershipsRes, workoutsRes] = await Promise.all([
+  const [membersRes, profesRes, membershipsRes] = await Promise.all([
     supabase.from('profiles').select('id, status').eq('gym_id', gymId).eq('role', 'socio'),
     supabase
       .from('profiles')
@@ -31,17 +30,11 @@ export async function fetchAdminMetrics(gymId) {
       .select('member_id, expires_at, membership_plans(name)')
       .eq('gym_id', gymId)
       .order('created_at', { ascending: false }),
-    supabase
-      .from('workout_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('gym_id', gymId)
-      .gte('started_at', monthStart),
   ]);
 
   if (membersRes.error) throw membersRes.error;
   if (profesRes.error) throw profesRes.error;
   if (membershipsRes.error) throw membershipsRes.error;
-  if (workoutsRes.error) throw workoutsRes.error;
 
   const members = membersRes.data;
   const latestByMember = new Map();
@@ -85,7 +78,6 @@ export async function fetchAdminMetrics(gymId) {
     vencenEstaSemana,
     vencieronUltimoMes,
     sinPlan,
-    entrenamientosEsteMes: workoutsRes.count ?? 0,
     planDistribution: [...planCounts.entries()]
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => (a.label === 'Sin plan' ? 1 : b.label === 'Sin plan' ? -1 : b.count - a.count)),

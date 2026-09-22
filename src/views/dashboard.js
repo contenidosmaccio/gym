@@ -59,7 +59,7 @@ export function renderDashboard(container, gym, profile, { onSignOut }) {
   const tabButtons = [...container.querySelectorAll('.app-tab')];
   const content = container.querySelector('#app-tab-content');
 
-  function selectTab(tabId) {
+  function selectTab(tabId, memberFilter) {
     tabButtons.forEach((btn) => btn.classList.toggle('is-active', btn.dataset.tab === tabId));
     if (tabId === 'schedule') {
       renderSchedule(content, gym, profile);
@@ -72,11 +72,11 @@ export function renderDashboard(container, gym, profile, { onSignOut }) {
         renderTrainingStaff(content, gym, profile);
       }
     } else if (tabId === 'members') {
-      renderMembers(content, gym);
+      renderMembers(content, gym, memberFilter);
     } else if (tabId === 'plans') {
       renderMembershipPlans(content, gym);
     } else if (profile.role === 'admin') {
-      renderAdminHome(content, gym, profile);
+      renderAdminHome(content, gym, profile, (filter) => selectTab('members', filter));
     } else {
       renderHome(content, profile);
     }
@@ -100,7 +100,15 @@ function renderHome(container, profile) {
   `;
 }
 
-async function renderAdminHome(container, gym, profile) {
+const STAT_TILE_FILTERS = {
+  activeMembers: { status: 'active' },
+  alDia: { due: 'alDia' },
+  vencidos: { due: 'vencidos' },
+  vencenEstaSemana: { due: 'vencenEstaSemana' },
+  vencieronUltimoMes: { due: 'vencieronUltimoMes' },
+};
+
+async function renderAdminHome(container, gym, profile, onNavigateMembers) {
   container.innerHTML = `
     <h2>Hola, ${escapeHtml(profile.first_name || profile.email)} 👋</h2>
     <p class="role-badge">${ROLE_LABELS.admin}</p>
@@ -112,12 +120,11 @@ async function renderAdminHome(container, gym, profile) {
 
   el.innerHTML = `
     <div class="stat-grid">
-      ${statTile('Socios activos', metrics.activeMembers)}
-      ${statTile('Al día con la cuota', metrics.alDia)}
-      ${statTile('Cuota vencida', metrics.vencidos)}
-      ${statTile('Vencen esta semana', metrics.vencenEstaSemana)}
-      ${statTile('Vencieron el último mes', metrics.vencieronUltimoMes)}
-      ${statTile('Entrenamientos este mes', metrics.entrenamientosEsteMes)}
+      ${statTile('Socios activos', metrics.activeMembers, 'activeMembers')}
+      ${statTile('Al día con la cuota', metrics.alDia, 'alDia')}
+      ${statTile('Cuota vencida', metrics.vencidos, 'vencidos')}
+      ${statTile('Vencen esta semana', metrics.vencenEstaSemana, 'vencenEstaSemana')}
+      ${statTile('Vencieron el último mes', metrics.vencieronUltimoMes, 'vencieronUltimoMes')}
     </div>
     <div class="card donut-card">
       <h3>Socios por plan</h3>
@@ -127,14 +134,22 @@ async function renderAdminHome(container, gym, profile) {
       </div>
     </div>
   `;
+
+  el.querySelectorAll('.stat-tile[data-filter-key]').forEach((tile) => {
+    tile.addEventListener('click', () => {
+      onNavigateMembers(STAT_TILE_FILTERS[tile.dataset.filterKey]);
+    });
+  });
 }
 
-function statTile(label, value) {
+function statTile(label, value, filterKey) {
+  const clickable = Boolean(filterKey);
+  const tag = clickable ? 'button' : 'div';
   return `
-    <div class="stat-tile">
+    <${tag} ${clickable ? `type="button" class="stat-tile is-clickable" data-filter-key="${filterKey}"` : 'class="stat-tile"'}>
       <span class="stat-value">${value.toLocaleString('es-AR')}</span>
       <span class="stat-label">${escapeHtml(label)}</span>
-    </div>
+    </${tag}>
   `;
 }
 
