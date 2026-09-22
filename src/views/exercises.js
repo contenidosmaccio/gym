@@ -14,16 +14,18 @@ export async function renderExercises(container, gym, profile) {
   const state = {
     exercises: await fetchExercises(gym.id, { onlyActive: !isAdmin }),
     filter: 'all',
-    editingId: null,
   };
 
   container.innerHTML = `
     <div class="exercises-view">
-      <h2>Biblioteca de ejercicios</h2>
+      <div class="exercises-header">
+        <h2>Biblioteca de ejercicios</h2>
+        ${isAdmin ? `<button type="button" id="exercise-new" class="btn btn-primary">+ Nuevo ejercicio</button>` : ''}
+      </div>
       <div class="exercises-filters"></div>
       <div class="exercises-grid"></div>
-      ${isAdmin ? `<div class="card exercises-admin"></div>` : ''}
     </div>
+    ${isAdmin ? modalShellMarkup() : ''}
   `;
 
   const renderFilters = () => {
@@ -59,7 +61,7 @@ export async function renderExercises(container, gym, profile) {
 
     if (isAdmin) {
       container.querySelectorAll('.exercise-edit').forEach((btn) => {
-        btn.addEventListener('click', () => startEdit(state.exercises.find((e) => e.id === btn.dataset.id)));
+        btn.addEventListener('click', () => openModal(state.exercises.find((e) => e.id === btn.dataset.id)));
       });
       container.querySelectorAll('.exercise-delete').forEach((btn) => {
         btn.addEventListener('click', async () => {
@@ -80,43 +82,58 @@ export async function renderExercises(container, gym, profile) {
     }
   };
 
-  const renderAdminForm = () => {
-    const panel = container.querySelector('.exercises-admin');
-    if (!panel) return;
-    const editing = state.editingId ? state.exercises.find((e) => e.id === state.editingId) : null;
-    panel.innerHTML = adminFormMarkup(editing);
-    wireAdminForm(panel, gym, editing, {
-      onSaved: async () => {
-        state.editingId = null;
-        await refresh();
-      },
-      onCancel: () => {
-        state.editingId = null;
-        renderAdminForm();
-      },
-    });
-  };
-
-  const startEdit = (exercise) => {
-    state.editingId = exercise.id;
-    renderAdminForm();
-    panelScrollIntoView(container);
-  };
-
   const refresh = async () => {
     state.exercises = await fetchExercises(gym.id, { onlyActive: !isAdmin });
     renderFilters();
     renderGrid();
-    renderAdminForm();
   };
+
+  let closeModal = () => {};
+  let openModal = () => {};
+
+  if (isAdmin) {
+    const overlay = container.querySelector('.modal-overlay');
+    const modalBody = container.querySelector('.modal-body');
+
+    closeModal = () => overlay.classList.remove('is-open');
+
+    openModal = (editing) => {
+      modalBody.innerHTML = adminFormMarkup(editing ?? null);
+      wireAdminForm(modalBody, gym, editing ?? null, {
+        onSaved: async () => {
+          closeModal();
+          await refresh();
+        },
+        onCancel: closeModal,
+      });
+      overlay.classList.add('is-open');
+    };
+
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) closeModal();
+    });
+    container.querySelector('.modal-close').addEventListener('click', closeModal);
+    document.addEventListener('keydown', function escHandler(event) {
+      if (event.key === 'Escape') closeModal();
+      if (!document.body.contains(overlay)) document.removeEventListener('keydown', escHandler);
+    });
+
+    container.querySelector('#exercise-new').addEventListener('click', () => openModal(null));
+  }
 
   renderFilters();
   renderGrid();
-  if (isAdmin) renderAdminForm();
 }
 
-function panelScrollIntoView(container) {
-  container.querySelector('.exercises-admin')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function modalShellMarkup() {
+  return `
+    <div class="modal-overlay">
+      <div class="modal card">
+        <button type="button" class="modal-close" aria-label="Cerrar">✕</button>
+        <div class="modal-body"></div>
+      </div>
+    </div>
+  `;
 }
 
 function exerciseCardMarkup(ex, isAdmin) {
@@ -182,7 +199,7 @@ function adminFormMarkup(editing) {
       <p class="form-error" id="exercise-form-error" hidden></p>
       <div class="form-row">
         <button type="submit" class="btn btn-primary">${editing ? 'Guardar cambios' : 'Agregar ejercicio'}</button>
-        ${editing ? `<button type="button" id="exercise-cancel-edit" class="btn-link">Cancelar</button>` : ''}
+        <button type="button" id="exercise-cancel-edit" class="btn-link">Cancelar</button>
       </div>
     </form>
   `;
