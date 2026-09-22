@@ -25,6 +25,21 @@ export async function fetchSchedules(gymId) {
   return data;
 }
 
+export async function createActivity(gymId, { name, color }) {
+  const { data, error } = await supabase
+    .from('activities')
+    .insert({ gym_id: gymId, name, color: color || '#888888' })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteActivity(id) {
+  const { error } = await supabase.from('activities').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function fetchProfessors(gymId) {
   const { data, error } = await supabase
     .from('profiles')

@@ -4,6 +4,8 @@ import {
   fetchActivities,
   fetchSchedules,
   setScheduleCell,
+  createActivity,
+  deleteActivity,
 } from '../lib/schedules.js';
 
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // lunes..domingo
@@ -139,27 +141,19 @@ function scheduleMobileMarkup(schedules, selectedDay) {
 // ---- Matriz interactiva (solo admin) ----
 
 function scheduleEditorMarkup(activities) {
-  if (activities.length === 0) {
-    return `<div class="card"><p>Todavía no hay actividades cargadas para este gimnasio.</p></div>`;
-  }
-
-  const activityItems = activities
-    .map(
-      (a) => `
-      <li class="schedule-activity-item" draggable="true" data-activity-id="${a.id}">
-        <span class="activity-dot" style="--chip-color:${escapeHtml(a.color)}"></span>
-        ${escapeHtml(a.name)}
-      </li>`
-    )
-    .join('');
-
   const headerCells = WEEK_ORDER.map((d) => `<th scope="col">${DAY_LABELS[d]}</th>`).join('');
 
   return `
     <div class="schedule-editor">
       <aside class="schedule-activities">
         <h3>Actividades</h3>
-        <ul class="schedule-activity-list">${activityItems}</ul>
+        <ul class="schedule-activity-list">${activityListItemsMarkup(activities)}</ul>
+        <form id="activity-create-form" class="schedule-activity-form">
+          <input type="text" name="name" placeholder="Nueva actividad" maxlength="40" required />
+          <input type="color" name="color" value="#ff6a00" title="Color" />
+          <button type="submit" class="btn-link">+ Agregar actividad</button>
+        </form>
+        <p class="form-error schedule-activity-error" hidden></p>
         <p class="schedule-activities-hint muted">Arrastrá una actividad hasta un casillero, o hacé click en un casillero para elegirla.</p>
       </aside>
       <div class="schedule-matrix-wrap">
@@ -171,6 +165,22 @@ function scheduleEditorMarkup(activities) {
     </div>
     <p class="schedule-editor-error form-error" hidden></p>
   `;
+}
+
+function activityListItemsMarkup(activities) {
+  if (activities.length === 0) {
+    return `<li class="muted">Todavía no hay actividades.</li>`;
+  }
+  return activities
+    .map(
+      (a) => `
+      <li class="schedule-activity-item" draggable="true" data-activity-id="${a.id}">
+        <span class="activity-dot" style="--chip-color:${escapeHtml(a.color)}"></span>
+        <span class="schedule-activity-name">${escapeHtml(a.name)}</span>
+        <button type="button" class="schedule-activity-delete" data-activity-id="${a.id}" title="Eliminar actividad" aria-label="Eliminar actividad">✕</button>
+      </li>`
+    )
+    .join('');
 }
 
 function matrixBodyMarkup(schedules) {
@@ -285,6 +295,60 @@ function wireScheduleEditor(root, gym, state, onChange) {
     const cell = event.target.closest('.schedule-matrix-cell');
     if (!cell) return;
     openPicker(cell);
+  });
+
+  const renderActivityList = () => {
+    root.querySelector('.schedule-activity-list').innerHTML = activityListItemsMarkup(state.activities);
+  };
+
+  const activityErrorEl = root.querySelector('.schedule-activity-error');
+  const showActivityError = (message) => {
+    activityErrorEl.textContent = message;
+    activityErrorEl.hidden = false;
+  };
+
+  root.querySelector('#activity-create-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    activityErrorEl.hidden = true;
+    const form = event.target;
+    const formData = new FormData(form);
+    const name = formData.get('name').trim();
+    const color = formData.get('color');
+    if (!name) return;
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try {
+      const activity = await createActivity(gym.id, { name, color });
+      state.activities = [...state.activities, activity].sort((a, b) => a.name.localeCompare(b.name));
+      form.reset();
+      form.querySelector('input[name="color"]').value = '#ff6a00';
+      renderActivityList();
+    } catch (err) {
+      showActivityError(err.message);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  root.addEventListener('click', async (event) => {
+    const deleteBtn = event.target.closest('.schedule-activity-delete');
+    if (!deleteBtn) return;
+    const activity = state.activities.find((a) => a.id === deleteBtn.dataset.activityId);
+    if (!activity) return;
+    if (!confirm(`¿Eliminar la actividad "${activity.name}"? También se va a quitar de los horarios donde esté asignada.`)) return;
+
+    deleteBtn.disabled = true;
+    try {
+      await deleteActivity(activity.id);
+      state.activities = state.activities.filter((a) => a.id !== activity.id);
+      state.schedules = state.schedules.filter((s) => s.activities.id !== activity.id);
+      renderActivityList();
+      onChange();
+    } catch (err) {
+      showActivityError(err.message);
+      deleteBtn.disabled = false;
+    }
   });
 }
 
