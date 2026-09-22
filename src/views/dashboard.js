@@ -3,6 +3,8 @@ import { renderSchedule } from './schedule.js';
 import { renderExercises } from './exercises.js';
 import { renderTrainingStaff } from './training-staff.js';
 import { renderTrainingMember } from './training-member.js';
+import { renderMembers } from './members.js';
+import { renderMembershipPlans } from './membership-plans.js';
 
 const ROLE_LABELS = {
   admin: 'Administrador',
@@ -10,12 +12,18 @@ const ROLE_LABELS = {
   socio: 'Socio',
 };
 
-const TABS = [
-  { id: 'home', label: 'Inicio' },
-  { id: 'schedule', label: 'Horarios' },
-  { id: 'exercises', label: 'Ejercicios' },
-  { id: 'training', label: 'Rutinas' },
-];
+function getTabs(role) {
+  const tabs = [
+    { id: 'home', label: 'Inicio' },
+    { id: 'schedule', label: 'Horarios' },
+    { id: 'exercises', label: 'Ejercicios' },
+    { id: 'training', label: 'Rutinas' },
+  ];
+  if (role === 'admin') {
+    tabs.push({ id: 'members', label: 'Socios' }, { id: 'plans', label: 'Planes' });
+  }
+  return tabs;
+}
 
 export function renderDashboard(container, gym, profile, { onSignOut }) {
   if (profile.status === 'pending') {
@@ -33,7 +41,9 @@ export function renderDashboard(container, gym, profile, { onSignOut }) {
         <button type="button" id="logout" class="btn-link">Cerrar sesión</button>
       </header>
       <nav class="app-tabs">
-        ${TABS.map((tab) => `<button type="button" class="app-tab" data-tab="${tab.id}">${tab.label}</button>`).join('')}
+        ${getTabs(profile.role)
+          .map((tab) => `<button type="button" class="app-tab" data-tab="${tab.id}">${tab.label}</button>`)
+          .join('')}
       </nav>
       <main class="app-main" id="app-tab-content"></main>
     </div>
@@ -59,6 +69,10 @@ export function renderDashboard(container, gym, profile, { onSignOut }) {
       } else {
         renderTrainingStaff(content, gym, profile);
       }
+    } else if (tabId === 'members') {
+      renderMembers(content, gym);
+    } else if (tabId === 'plans') {
+      renderMembershipPlans(content, gym);
     } else {
       renderHome(content, profile);
     }

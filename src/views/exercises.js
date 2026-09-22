@@ -6,6 +6,7 @@ import {
   deleteExercise,
   uploadExerciseImage,
 } from '../lib/exercises.js';
+import { modalShellMarkup, initModal } from '../lib/modal.js';
 
 export async function renderExercises(container, gym, profile) {
   container.innerHTML = `<p class="muted">Cargando ejercicios…</p>`;
@@ -14,6 +15,7 @@ export async function renderExercises(container, gym, profile) {
   const state = {
     exercises: await fetchExercises(gym.id, { onlyActive: !isAdmin }),
     filter: 'all',
+    search: '',
   };
 
   container.innerHTML = `
@@ -22,11 +24,17 @@ export async function renderExercises(container, gym, profile) {
         <h2>Biblioteca de ejercicios</h2>
         ${isAdmin ? `<button type="button" id="exercise-new" class="btn btn-primary">+ Nuevo ejercicio</button>` : ''}
       </div>
+      <input type="search" id="exercise-search" class="search-input" placeholder="Buscar ejercicio por nombre…" />
       <div class="exercises-filters"></div>
       <div class="exercises-grid"></div>
     </div>
     ${isAdmin ? modalShellMarkup() : ''}
   `;
+
+  container.querySelector('#exercise-search').addEventListener('input', (event) => {
+    state.search = event.target.value.trim().toLowerCase();
+    renderGrid();
+  });
 
   const renderFilters = () => {
     const groups = [...new Set(state.exercises.map((e) => e.muscle_group).filter(Boolean))];
@@ -49,8 +57,11 @@ export async function renderExercises(container, gym, profile) {
   };
 
   const renderGrid = () => {
-    const visible =
+    let visible =
       state.filter === 'all' ? state.exercises : state.exercises.filter((e) => e.muscle_group === state.filter);
+    if (state.search) {
+      visible = visible.filter((e) => e.name.toLowerCase().includes(state.search));
+    }
 
     if (visible.length === 0) {
       container.querySelector('.exercises-grid').innerHTML = `<p class="muted">No hay ejercicios para mostrar.</p>`;
@@ -88,52 +99,26 @@ export async function renderExercises(container, gym, profile) {
     renderGrid();
   };
 
-  let closeModal = () => {};
   let openModal = () => {};
 
   if (isAdmin) {
-    const overlay = container.querySelector('.modal-overlay');
-    const modalBody = container.querySelector('.modal-body');
-
-    closeModal = () => overlay.classList.remove('is-open');
-
+    const modal = initModal(container);
     openModal = (editing) => {
-      modalBody.innerHTML = adminFormMarkup(editing ?? null);
-      wireAdminForm(modalBody, gym, editing ?? null, {
-        onSaved: async () => {
-          closeModal();
-          await refresh();
-        },
-        onCancel: closeModal,
+      modal.open(adminFormMarkup(editing ?? null), (body) => {
+        wireAdminForm(body, gym, editing ?? null, {
+          onSaved: async () => {
+            modal.close();
+            await refresh();
+          },
+          onCancel: modal.close,
+        });
       });
-      overlay.classList.add('is-open');
     };
-
-    overlay.addEventListener('click', (event) => {
-      if (event.target === overlay) closeModal();
-    });
-    container.querySelector('.modal-close').addEventListener('click', closeModal);
-    document.addEventListener('keydown', function escHandler(event) {
-      if (event.key === 'Escape') closeModal();
-      if (!document.body.contains(overlay)) document.removeEventListener('keydown', escHandler);
-    });
-
     container.querySelector('#exercise-new').addEventListener('click', () => openModal(null));
   }
 
   renderFilters();
   renderGrid();
-}
-
-function modalShellMarkup() {
-  return `
-    <div class="modal-overlay">
-      <div class="modal card">
-        <button type="button" class="modal-close" aria-label="Cerrar">✕</button>
-        <div class="modal-body"></div>
-      </div>
-    </div>
-  `;
 }
 
 function exerciseCardMarkup(ex, isAdmin) {

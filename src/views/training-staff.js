@@ -22,6 +22,7 @@ export async function renderTrainingStaff(container, gym, profile) {
   container.innerHTML = `
     <div class="training-view">
       <h2>Planes y rutinas</h2>
+      <input type="search" id="member-search" class="search-input" placeholder="Buscar socio por nombre…" />
       <label class="member-picker">
         Socio
         <select id="member-select">
@@ -34,7 +35,20 @@ export async function renderTrainingStaff(container, gym, profile) {
     </div>
   `;
 
-  container.querySelector('#member-select').addEventListener('change', async (event) => {
+  const memberSelect = container.querySelector('#member-select');
+
+  container.querySelector('#member-search').addEventListener('input', (event) => {
+    const term = event.target.value.trim().toLowerCase();
+    const filtered = term ? members.filter((m) => memberLabel(m).toLowerCase().includes(term)) : members;
+    const keepSelected = filtered.some((m) => m.id === state.selectedMemberId);
+    memberSelect.innerHTML = `
+      <option value="">Elegí un socio…</option>
+      ${filtered.map((m) => `<option value="${m.id}">${escapeHtml(memberLabel(m))}</option>`).join('')}
+    `;
+    memberSelect.value = keepSelected ? state.selectedMemberId : '';
+  });
+
+  memberSelect.addEventListener('change', async (event) => {
     state.selectedMemberId = event.target.value || null;
     state.selectedPlanId = null;
     if (state.selectedMemberId) {
