@@ -3,24 +3,20 @@ import {
   DAY_LABELS_SHORT,
   fetchActivities,
   fetchSchedules,
-  fetchProfessors,
-  createSchedules,
-  deleteSchedule,
+  setScheduleCell,
 } from '../lib/schedules.js';
 
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // lunes..domingo
+const HOURS = Array.from({ length: 18 }, (_, i) => i + 6); // 06:00..23:00
 
 export async function renderSchedule(container, gym, profile) {
   container.innerHTML = `<p class="muted">Cargando horarios…</p>`;
 
   const isAdmin = profile?.role === 'admin';
-  const [activities, schedules, professors] = await Promise.all([
-    fetchActivities(gym.id),
-    fetchSchedules(gym.id),
-    isAdmin ? fetchProfessors(gym.id) : Promise.resolve([]),
-  ]);
+  const [activities, schedules] = await Promise.all([fetchActivities(gym.id), fetchSchedules(gym.id)]);
 
   const state = {
+    activities,
     schedules,
     selectedDay: WEEK_ORDER.find((d) => schedules.some((s) => s.day_of_week === d)) ?? new Date().getDay(),
   };
@@ -28,11 +24,15 @@ export async function renderSchedule(container, gym, profile) {
   container.innerHTML = `
     <div class="schedule-view">
       <h2>Horarios</h2>
-      <div class="schedule-grid-wrap"></div>
-      <div class="schedule-mobile"></div>
-      ${isAdmin ? adminFormMarkup(activities, professors) : ''}
+      ${isAdmin ? scheduleEditorMarkup(state.activities) : `<div class="schedule-grid-wrap"></div><div class="schedule-mobile"></div>`}
     </div>
   `;
+
+  if (isAdmin) {
+    renderMatrixBody();
+    wireScheduleEditor(container, gym, state, renderMatrixBody);
+    return;
+  }
 
   const renderGrid = () => {
     container.querySelector('.schedule-grid-wrap').outerHTML = scheduleGridMarkup(state.schedules);
@@ -48,37 +48,17 @@ export async function renderSchedule(container, gym, profile) {
       renderMobile();
     });
   };
-  const renderAdminList = () => {
-    const listEl = container.querySelector('.schedule-admin-list');
-    if (!listEl) return;
-    listEl.outerHTML = adminListMarkup(state.schedules);
-    container.querySelectorAll('.schedule-delete').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        if (!confirm('¿Eliminar este horario?')) return;
-        btn.disabled = true;
-        await deleteSchedule(btn.dataset.id);
-        await refresh();
-      });
-    });
-  };
-  const refresh = async () => {
-    state.schedules = await fetchSchedules(gym.id);
-    renderGrid();
-    renderMobile();
-    renderAdminList();
-  };
 
   renderGrid();
   renderMobile();
 
-  if (isAdmin) {
-    container.insertAdjacentHTML('beforeend', adminListMarkup(state.schedules));
-    renderAdminList();
-    wireAdminForm(container, gym, refresh);
+  function renderMatrixBody() {
+    const tbody = container.querySelector('.schedule-matrix-body');
+    if (tbody) tbody.innerHTML = matrixBodyMarkup(state.schedules);
   }
 }
 
-// ---- Grilla de escritorio ----
+// ---- Grilla de escritorio (solo lectura) ----
 
 function scheduleGridMarkup(schedules) {
   const daysWithData = WEEK_ORDER.filter((d) => schedules.some((s) => s.day_of_week === d));
@@ -124,7 +104,7 @@ function scheduleGridMarkup(schedules) {
   `;
 }
 
-// ---- Vista mobile por día ----
+// ---- Vista mobile por día (solo lectura) ----
 
 function scheduleMobileMarkup(schedules, selectedDay) {
   const dayEntries = schedules
@@ -156,144 +136,155 @@ function scheduleMobileMarkup(schedules, selectedDay) {
   `;
 }
 
-// ---- Administración (solo admin) ----
+// ---- Matriz interactiva (solo admin) ----
 
-function adminFormMarkup(activities, professors) {
+function scheduleEditorMarkup(activities) {
   if (activities.length === 0) {
     return `<div class="card"><p>Todavía no hay actividades cargadas para este gimnasio.</p></div>`;
   }
 
-  const activityOptions = activities.map((a) => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('');
-  const dayOptions = DAY_LABELS.map((label, i) => `<option value="${i}">${label}</option>`).join('');
-  const professorOptions = professors
-    .map((p) => `<option value="${p.id}">${escapeHtml([p.first_name, p.last_name].filter(Boolean).join(' '))}</option>`)
-    .join('');
-
-  return `
-    <div class="card schedule-admin">
-      <h3>Administrar horarios</h3>
-      <form id="schedule-form" class="form">
-        <label>
-          Actividad
-          <select name="activity_id" required>${activityOptions}</select>
-        </label>
-        <label>
-          Día
-          <select name="day_of_week" required>${dayOptions}</select>
-        </label>
-        <div class="form-row">
-          <label>
-            Desde
-            <input type="time" name="start_time" required />
-          </label>
-          <label>
-            Hasta
-            <input type="time" name="end_time" required />
-          </label>
-        </div>
-        <label>
-          Profesor
-          <select name="professor_id">
-            <option value="">Sin asignar</option>
-            ${professorOptions}
-          </select>
-        </label>
-        <div class="form-row">
-          <label>
-            Sala
-            <input type="text" name="room" />
-          </label>
-          <label>
-            Cupo
-            <input type="number" name="capacity" min="1" />
-          </label>
-        </div>
-        <label class="checkbox-label">
-          <input type="checkbox" name="repeat_weekdays" />
-          Repetir lunes a viernes
-        </label>
-        <p class="form-error" id="schedule-form-error" hidden></p>
-        <button type="submit" class="btn btn-primary">Agregar horario</button>
-      </form>
-    </div>
-  `;
-}
-
-function adminListMarkup(schedules) {
-  if (schedules.length === 0) {
-    return `<div class="schedule-admin-list"><p class="muted">Sin horarios cargados todavía.</p></div>`;
-  }
-  const sorted = [...schedules].sort((a, b) => a.day_of_week - b.day_of_week || a.start_time.localeCompare(b.start_time));
-  const rows = sorted
+  const activityItems = activities
     .map(
-      (s) => `
-      <tr>
-        <td>${DAY_LABELS_SHORT[s.day_of_week]}</td>
-        <td>${formatTimeRange(s.start_time, s.end_time)}</td>
-        <td><span class="activity-chip" style="--chip-color:${escapeHtml(s.activities.color)}">${escapeHtml(s.activities.name)}</span></td>
-        <td>${s.room ? escapeHtml(s.room) : '—'}</td>
-        <td>${s.capacity ?? '—'}</td>
-        <td><button type="button" class="btn-link schedule-delete" data-id="${s.id}">Eliminar</button></td>
-      </tr>`
+      (a) => `
+      <li class="schedule-activity-item" draggable="true" data-activity-id="${a.id}">
+        <span class="activity-dot" style="--chip-color:${escapeHtml(a.color)}"></span>
+        ${escapeHtml(a.name)}
+      </li>`
     )
     .join('');
 
+  const headerCells = WEEK_ORDER.map((d) => `<th scope="col">${DAY_LABELS[d]}</th>`).join('');
+
   return `
-    <div class="schedule-admin-list">
-      <table class="schedule-admin-table">
-        <thead><tr><th>Día</th><th>Horario</th><th>Actividad</th><th>Sala</th><th>Cupo</th><th></th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
+    <div class="schedule-editor">
+      <aside class="schedule-activities">
+        <h3>Actividades</h3>
+        <ul class="schedule-activity-list">${activityItems}</ul>
+        <p class="schedule-activities-hint muted">Arrastrá una actividad hasta un casillero, o hacé click en un casillero para elegirla.</p>
+      </aside>
+      <div class="schedule-matrix-wrap">
+        <table class="schedule-matrix">
+          <thead><tr><th></th>${headerCells}</tr></thead>
+          <tbody class="schedule-matrix-body"></tbody>
+        </table>
+      </div>
     </div>
+    <p class="schedule-editor-error form-error" hidden></p>
   `;
 }
 
-function wireAdminForm(container, gym, onChange) {
-  const form = container.querySelector('#schedule-form');
-  if (!form) return;
-  const errorEl = container.querySelector('#schedule-form-error');
+function matrixBodyMarkup(schedules) {
+  return HOURS.map((hour) => {
+    const cells = WEEK_ORDER.map((day) => {
+      const entry = findEntry(schedules, day, hour);
+      const content = entry
+        ? `<span class="activity-chip" style="--chip-color:${escapeHtml(entry.activities.color)}">${escapeHtml(
+            entry.activities.name
+          )}</span>`
+        : '';
+      return `<td class="schedule-matrix-cell" data-day="${day}" data-hour="${hour}">${content}</td>`;
+    }).join('');
+    return `<tr><th scope="row">${String(hour).padStart(2, '0')}:00</th>${cells}</tr>`;
+  }).join('');
+}
 
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    errorEl.hidden = true;
-    const formData = new FormData(form);
-    const startTime = formData.get('start_time');
-    const endTime = formData.get('end_time');
+function findEntry(schedules, day, hour) {
+  return schedules.find((s) => s.day_of_week === day && Number(s.start_time.slice(0, 2)) === hour);
+}
 
-    if (startTime >= endTime) {
-      errorEl.textContent = 'El horario de fin debe ser posterior al de inicio.';
-      errorEl.hidden = false;
-      return;
-    }
+function wireScheduleEditor(root, gym, state, onChange) {
+  const errorEl = root.querySelector('.schedule-editor-error');
 
-    const days = formData.get('repeat_weekdays') ? [1, 2, 3, 4, 5] : [Number(formData.get('day_of_week'))];
-    const professorId = formData.get('professor_id') || null;
-    const room = formData.get('room') || null;
-    const capacity = formData.get('capacity') ? Number(formData.get('capacity')) : null;
+  const showError = (message) => {
+    errorEl.textContent = message;
+    errorEl.hidden = false;
+    setTimeout(() => {
+      errorEl.hidden = true;
+    }, 4000);
+  };
 
-    const rows = days.map((day_of_week) => ({
-      gym_id: gym.id,
-      activity_id: formData.get('activity_id'),
-      day_of_week,
-      start_time: startTime,
-      end_time: endTime,
-      professor_id: professorId,
-      room,
-      capacity,
-    }));
+  const applyCellChange = async (cell, activityId) => {
+    const day = Number(cell.dataset.day);
+    const hour = Number(cell.dataset.hour);
+    const existing = findEntry(state.schedules, day, hour);
+    if (existing && existing.activities.id === activityId) return;
 
-    const submitBtn = form.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
     try {
-      await createSchedules(rows);
-      form.reset();
-      await onChange();
+      const updated = await setScheduleCell(gym.id, day, hour, activityId || null, existing?.id);
+      state.schedules = state.schedules.filter((s) => s.id !== existing?.id);
+      if (updated) state.schedules.push(updated);
+      onChange();
     } catch (err) {
-      errorEl.textContent = err.message;
-      errorEl.hidden = false;
-    } finally {
-      submitBtn.disabled = false;
+      showError(err.message);
+      onChange();
     }
+  };
+
+  const openPicker = (cell) => {
+    if (cell.querySelector('select')) return;
+    const day = Number(cell.dataset.day);
+    const hour = Number(cell.dataset.hour);
+    const existing = findEntry(state.schedules, day, hour);
+    const previousHtml = cell.innerHTML;
+
+    const options = [`<option value="">— Vaciar —</option>`]
+      .concat(
+        state.activities.map(
+          (a) => `<option value="${a.id}" ${existing?.activities.id === a.id ? 'selected' : ''}>${escapeHtml(a.name)}</option>`
+        )
+      )
+      .join('');
+
+    cell.innerHTML = `<select class="schedule-cell-select">${options}</select>`;
+    const select = cell.querySelector('select');
+    select.focus();
+
+    let applied = false;
+    select.addEventListener('change', () => {
+      applied = true;
+      applyCellChange(cell, select.value);
+    });
+    select.addEventListener('blur', () => {
+      if (!applied) cell.innerHTML = previousHtml;
+    });
+  };
+
+  root.addEventListener('dragstart', (event) => {
+    const item = event.target.closest('.schedule-activity-item');
+    if (!item) return;
+    event.dataTransfer.setData('text/plain', item.dataset.activityId);
+    event.dataTransfer.effectAllowed = 'copy';
+  });
+
+  root.addEventListener('dragover', (event) => {
+    const cell = event.target.closest('.schedule-matrix-cell');
+    if (!cell) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    cell.classList.add('is-dragover');
+  });
+
+  root.addEventListener('dragleave', (event) => {
+    const cell = event.target.closest('.schedule-matrix-cell');
+    if (!cell) return;
+    cell.classList.remove('is-dragover');
+  });
+
+  root.addEventListener('drop', (event) => {
+    const cell = event.target.closest('.schedule-matrix-cell');
+    if (!cell) return;
+    event.preventDefault();
+    cell.classList.remove('is-dragover');
+    const activityId = event.dataTransfer.getData('text/plain');
+    if (!activityId) return;
+    applyCellChange(cell, activityId);
+  });
+
+  root.addEventListener('click', (event) => {
+    if (event.target.closest('select.schedule-cell-select')) return;
+    const cell = event.target.closest('.schedule-matrix-cell');
+    if (!cell) return;
+    openPicker(cell);
   });
 }
 

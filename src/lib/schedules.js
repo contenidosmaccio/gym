@@ -36,12 +36,23 @@ export async function fetchProfessors(gymId) {
   return data;
 }
 
-export async function createSchedules(rows) {
-  const { error } = await supabase.from('class_schedules').insert(rows);
-  if (error) throw error;
-}
-
 export async function deleteSchedule(id) {
   const { error } = await supabase.from('class_schedules').delete().eq('id', id);
   if (error) throw error;
+}
+
+export async function setScheduleCell(gymId, dayOfWeek, hour, activityId, existingId) {
+  if (existingId) await deleteSchedule(existingId);
+  if (!activityId) return null;
+
+  const start_time = `${String(hour).padStart(2, '0')}:00:00`;
+  const end_time = hour === 23 ? '23:59:59' : `${String(hour + 1).padStart(2, '0')}:00:00`;
+
+  const { data, error } = await supabase
+    .from('class_schedules')
+    .insert({ gym_id: gymId, activity_id: activityId, day_of_week: dayOfWeek, start_time, end_time })
+    .select('*, activities(id, name, color)')
+    .single();
+  if (error) throw error;
+  return data;
 }
