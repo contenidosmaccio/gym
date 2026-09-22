@@ -5,6 +5,8 @@ import { renderTrainingStaff } from './training-staff.js';
 import { renderTrainingMember } from './training-member.js';
 import { renderMembers } from './members.js';
 import { renderMembershipPlans } from './membership-plans.js';
+import { fetchAdminMetrics } from '../lib/dashboard-metrics.js';
+import { donutChartMarkup, donutLegendMarkup } from '../lib/donut-chart.js';
 
 const ROLE_LABELS = {
   admin: 'Administrador',
@@ -73,6 +75,8 @@ export function renderDashboard(container, gym, profile, { onSignOut }) {
       renderMembers(content, gym);
     } else if (tabId === 'plans') {
       renderMembershipPlans(content, gym);
+    } else if (profile.role === 'admin') {
+      renderAdminHome(content, gym, profile);
     } else {
       renderHome(content, profile);
     }
@@ -92,6 +96,44 @@ function renderHome(container, profile) {
         ya están funcionando. El resto de los módulos (rutinas, cuotas, etc.)
         se van a ir agregando por etapas.
       </p>
+    </div>
+  `;
+}
+
+async function renderAdminHome(container, gym, profile) {
+  container.innerHTML = `
+    <h2>Hola, ${escapeHtml(profile.first_name || profile.email)} 👋</h2>
+    <p class="role-badge">${ROLE_LABELS.admin}</p>
+    <div class="metrics-dashboard"><p class="muted">Cargando métricas…</p></div>
+  `;
+
+  const metrics = await fetchAdminMetrics(gym.id);
+  const el = container.querySelector('.metrics-dashboard');
+
+  el.innerHTML = `
+    <div class="stat-grid">
+      ${statTile('Socios activos', metrics.activeMembers)}
+      ${statTile('Al día con la cuota', metrics.alDia)}
+      ${statTile('Cuota vencida', metrics.vencidos)}
+      ${statTile('Vencen esta semana', metrics.vencenEstaSemana)}
+      ${statTile('Vencieron el último mes', metrics.vencieronUltimoMes)}
+      ${statTile('Entrenamientos este mes', metrics.entrenamientosEsteMes)}
+    </div>
+    <div class="card donut-card">
+      <h3>Socios por plan</h3>
+      <div class="donut-layout">
+        ${donutChartMarkup(metrics.planDistribution)}
+        ${donutLegendMarkup(metrics.planDistribution)}
+      </div>
+    </div>
+  `;
+}
+
+function statTile(label, value) {
+  return `
+    <div class="stat-tile">
+      <span class="stat-value">${value.toLocaleString('es-AR')}</span>
+      <span class="stat-label">${escapeHtml(label)}</span>
     </div>
   `;
 }
