@@ -13,6 +13,7 @@ import {
 } from '../lib/training.js';
 import { fetchExercises } from '../lib/exercises.js';
 import { localToday } from '../lib/dashboard-metrics.js';
+import { modalShellMarkup, initModal } from '../lib/modal.js';
 
 const ICONS = {
   eye: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>`,
@@ -53,21 +54,22 @@ export async function renderTrainingStaff(container, gym, profile) {
         <label class="date-filter">Hasta <input type="date" id="filter-to" value="${state.dateTo}" /></label>
       </div>
       <div class="members-table-wrap"><div class="training-members-list"></div></div>
-      <div class="training-plans"></div>
-      <div class="training-routines"></div>
     </div>
+    ${modalShellMarkup()}
   `;
 
-  const selectMember = async (memberId) => {
-    state.selectedMemberId = memberId || null;
+  const modal = initModal(container);
+  container.querySelector('.modal').classList.add('modal-wide');
+
+  const openMemberModal = async (memberId) => {
+    state.selectedMemberId = memberId;
     state.selectedPlanId = null;
-    if (state.selectedMemberId) {
-      state.plans = await fetchPlansForMember(gym.id, state.selectedMemberId);
-    } else {
-      state.plans = [];
-    }
-    renderPlans();
-    renderRoutinesSection();
+    state.plans = await fetchPlansForMember(gym.id, memberId);
+    state.routines = [];
+    modal.open(`<div class="training-plans"></div><div class="training-routines"></div>`, () => {
+      renderPlans();
+      renderRoutinesSection();
+    });
   };
 
   const focusInput = (selector) => {
@@ -108,7 +110,7 @@ export async function renderTrainingStaff(container, gym, profile) {
 
     listEl.querySelectorAll('.routine-view').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        await selectMember(btn.dataset.id);
+        await openMemberModal(btn.dataset.id);
         const matching = plansInRangeForMember(state, btn.dataset.id);
         if (matching.length) {
           state.selectedPlanId = matching[0].id;
@@ -116,12 +118,11 @@ export async function renderTrainingStaff(container, gym, profile) {
           renderPlans();
           renderRoutinesSection();
         }
-        focusInput('.training-plans');
       });
     });
     listEl.querySelectorAll('.routine-add').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        await selectMember(btn.dataset.id);
+        await openMemberModal(btn.dataset.id);
         const matching = plansInRangeForMember(state, btn.dataset.id);
         if (matching.length) {
           state.selectedPlanId = matching[0].id;
@@ -151,6 +152,7 @@ export async function renderTrainingStaff(container, gym, profile) {
 
   const renderPlans = () => {
     const el = container.querySelector('.training-plans');
+    if (!el) return;
     if (!state.selectedMemberId) {
       el.innerHTML = '';
       return;
@@ -251,6 +253,7 @@ export async function renderTrainingStaff(container, gym, profile) {
 
   const renderRoutinesSection = () => {
     const el = container.querySelector('.training-routines');
+    if (!el) return;
     if (!state.selectedPlanId) {
       el.innerHTML = '';
       return;
@@ -341,7 +344,6 @@ export async function renderTrainingStaff(container, gym, profile) {
   };
 
   renderMembersList();
-  renderPlans();
 }
 
 function memberRowMarkup(m, matchingPlans) {

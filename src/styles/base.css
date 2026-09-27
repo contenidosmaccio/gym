@@ -776,6 +776,10 @@ h3 {
   margin: auto;
 }
 
+.modal.modal-wide {
+  max-width: 720px;
+}
+
 .modal-close {
   position: absolute;
   top: 12px;
