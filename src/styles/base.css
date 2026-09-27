@@ -795,38 +795,56 @@ h3 {
   margin: 0 0 16px;
 }
 
-.member-search-results {
-  margin: -8px 0 20px;
+.training-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
-.member-search-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  overflow: hidden;
+.training-toolbar .search-input {
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 220px;
 }
 
-.member-search-row {
+.date-filter {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.date-filter input[type='date'] {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--color-contrast);
+  font-size: 0.9rem;
+}
+
+.training-members-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.training-members-table th,
+.training-members-table td {
+  padding: 10px 8px;
   border-bottom: 1px solid var(--color-border);
+  text-align: left;
 }
 
-.member-search-row:last-child {
-  border-bottom: none;
-}
-
-.member-search-name {
-  min-width: 0;
-  flex: 1;
-}
-
-.member-search-row .row-actions {
-  margin-left: auto;
+.training-members-table thead th {
+  color: var(--color-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.65rem;
 }
 
 .plain-list {

@@ -3,10 +3,20 @@ import { supabase } from './supabase.js';
 export async function fetchMembers(gymId) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, first_name, last_name, email, member_number')
+    .select('id, first_name, last_name, email, member_number, photo_url, phone')
     .eq('gym_id', gymId)
     .eq('role', 'socio')
     .order('first_name');
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchPlansForGym(gymId) {
+  const { data, error } = await supabase
+    .from('training_plans')
+    .select('*')
+    .eq('gym_id', gymId)
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return data;
 }
